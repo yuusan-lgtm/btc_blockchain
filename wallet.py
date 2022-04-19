@@ -1,48 +1,49 @@
-import pprint
-
 import base58
 import codecs
 import hashlib
-import utils
 import pprint
-import ecdsa
 
-# privke = ecdsa.SigningKey.generate(curve=ecdsa.NIST256p)
+from ecdsa import NIST256p
+from ecdsa import SigningKey
 
-class  Wallet(object):
+import utils
+
+
+class Wallet(object):
 
     def __init__(self):
-        self._privkey= ecdsa.SigningKey.generate(curve=ecdsa.NIST256p)
-        self._publkey = self._privkey.get_verifying_key()
+        self._private_key = SigningKey.generate(curve=NIST256p)
+        self._public_key = self._private_key.get_verifying_key()
         self._blockchain_address = self.generate_blockchain_address()
 
     @property
-    def privkey(self):
-        return self._privkey.to_string().hex()
+    def private_key(self):
+        return self._private_key.to_string().hex()
 
     @property
-    def publkey(self):
-        return self._publkey.to_string().hex()
+    def public_key(self):
+        return self._public_key.to_string().hex()
 
     @property
     def blockchain_address(self):
         return self._blockchain_address
 
     def generate_blockchain_address(self):
-        public_key_bytes = self._publkey.to_string()
+        public_key_bytes = self._public_key.to_string()
         sha256_bpk = hashlib.sha256(public_key_bytes)
         sha256_bpk_digest = sha256_bpk.digest()
 
-        ripemd160_bpk = hashlib.new('ripemd160')
-        ripemd160_bpk.update(sha256_bpk_digest)
-        ripemd160_bpk.digest = ripemd160_bpk.digest()
-        ripemd160_bpk_hex = codecs.encode(ripemd160_bpk.digest, 'hex')
+        ripemed160_bpk = hashlib.new('ripemd160')
+        ripemed160_bpk.update(sha256_bpk_digest)
+        ripemed160_bpk_digest = ripemed160_bpk.digest()
+        ripemed160_bpk_hex = codecs.encode(ripemed160_bpk_digest, 'hex')
 
-        byte = b'00'
-        bitcoin_publickey = byte + ripemd160_bpk_hex
-        bitcoin_publickey_byte = codecs.decode(bitcoin_publickey, 'hex')
+        network_byte = b'00'
+        network_bitcoin_public_key = network_byte + ripemed160_bpk_hex
+        network_bitcoin_public_key_bytes = codecs.decode(
+            network_bitcoin_public_key, 'hex')
 
-        sha256_bpk = hashlib.sha256(bitcoin_publickey_byte)
+        sha256_bpk = hashlib.sha256(network_bitcoin_public_key_bytes)
         sha256_bpk_digest = sha256_bpk.digest()
         sha256_2_nbpk = hashlib.sha256(sha256_bpk_digest)
         sha256_2_nbpk_digest = sha256_2_nbpk.digest()
@@ -50,62 +51,63 @@ class  Wallet(object):
 
         checksum = sha256_hex[:8]
 
-        address_hex = (bitcoin_publickey + checksum).decode('utf-8')
+        address_hex = (network_bitcoin_public_key + checksum).decode('utf-8')
 
-        blockchain_address = base58.b58decode(address_hex).decode('utf-8')
+        blockchain_address = base58.b58encode(address_hex).decode('utf-8')
         return blockchain_address
+
 
 class Transaction(object):
 
-    def __init__(self, sender_privkey, sender_publickey, sender_blockchain_address,
-                 receve_blockchain_address,value):
-        self.sender_private_key = sender_privkey
-        self.sender_public_key = sender_publickey
+    def __init__(self, sender_private_key, sender_public_key,
+                 sender_blockchain_address, recipient_blockchain_address,
+                 value):
+        self.sender_private_key = sender_private_key
+        self.sender_public_key = sender_public_key
         self.sender_blockchain_address = sender_blockchain_address
-        self.receve_blockchain_address = receve_blockchain_address
+        self.recipient_blockchain_address = recipient_blockchain_address
         self.value = value
 
     def generate_signature(self):
         sha256 = hashlib.sha256()
         transaction = utils.sorted_by_key({
-            'sender_blockchain_address ' : self.sender_blockchain_address,
-            'receve_blockchain_address': self.receve_blockchain_address,
-            'value': self.value
+            'sender_blockchain_address': self.sender_blockchain_address,
+            'recipient_blockchain_address': self.recipient_blockchain_address,
+            'value': float(self.value)
         })
         sha256.update(str(transaction).encode('utf-8'))
         message = sha256.digest()
-        private_key = ecdsa.SigningKey.from_string(
-            bytes().fromhex(self.sender_private_key), curve=ecdsa.NIST256p)
+        private_key = SigningKey.from_string(
+            bytes().fromhex(self.sender_private_key), curve=NIST256p)
         private_key_sign = private_key.sign(message)
-        signature = private_key_sign.hex()
+        signature= private_key_sign.hex()
         return signature
 
+
 if __name__ == '__main__':
-    wallet_mining = Wallet()
-    wallet_accout1 = Wallet()
-    wallet_accout2 = Wallet()
+    wallet_M = Wallet()
+    wallet_A = Wallet()
+    wallet_B = Wallet()
     t = Transaction(
-        wallet_accout1.privkey, wallet_accout1.publkey, wallet_accout1.blockchain_address,
-        wallet_accout2.blockchain_address,1.0)
+        wallet_A.private_key, wallet_A.public_key, wallet_A.blockchain_address,
+        wallet_B.blockchain_address, 1.0)
 
-
+    ########### Blockchain Node
     import blockchain
     block_chain = blockchain.BlockChain(
-        blockchain_address=wallet_mining.blockchain_address
-    )
+        blockchain_address=wallet_M.blockchain_address)
     is_added = block_chain.add_transaction(
-        wallet_accout1.blockchain_address,
-        wallet_accout2.blockchain_address,
+        wallet_A.blockchain_address,
+        wallet_B.blockchain_address,
         1.0,
-        wallet_accout1.publkey_key,
+        wallet_A.public_key,
         t.generate_signature())
     print('Added?', is_added)
-    block_chain.minig()
+    block_chain.mining()
     pprint.pprint(block_chain.chain)
 
-    print('A', block_chain.calculate_total_price(wallet_accout1.blockchain_address))
-    print('B', block_chain.calculate_total_price(wallet_accout2.blockchain_address))
-
+    print('A', block_chain.calculate_total_amount(wallet_A.blockchain_address))
+    print('B', block_chain.calculate_total_amount(wallet_B.blockchain_address))
 
 
 

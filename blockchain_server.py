@@ -8,10 +8,35 @@ from flask import jsonify
 
 app = Flask(__name__)
 
+cache = {}
 
-@app.route('/')
+def get_blockchain():
+    cached_blockchain = cache.get('blockchain')
+    if not cached_blockchain:
+        miners_wallet = wallet.Wallet()
+        cache['blockchain'] = blockchain.BlockChain(
+            blockchain_address = miners_wallet.blockchain_address,
+            port=app.config['port']
+        )
+        app.logger.warning({
+            'private_key': miners_wallet.private_key,
+            'public_key': miners_wallet.public_key,
+            'blockchain_address': miners_wallet.blockchain_address
+        })
+        return chahe['blockchain']
+
+
+@app.route('/hello')
 def hello_world():
     return 'Hello, World!'
+
+@app.route('/', methods=['GET'])
+def get_chain():
+    block_chain = get_blockchain()
+    response = {
+    'blockchain': block_chain.chain
+    }
+    return jsonify(response),200
 
 
 if __name__ == '__main__':
