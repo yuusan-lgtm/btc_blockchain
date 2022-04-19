@@ -23,7 +23,7 @@ def get_blockchain():
             'public_key': miners_wallet.public_key,
             'blockchain_address': miners_wallet.blockchain_address
         })
-        return chahe['blockchain']
+        return cache['blockchain']
 
 
 @app.route('/hello')
@@ -46,5 +46,7 @@ if __name__ == '__main__':
                         type=int, help='port to listen on')
     args = parser.parse_args()
     port = args.port
+
+    app.config['port'] = port
 
     app.run(host='0.0.0.0', port=port, threaded=True, debug=True)
