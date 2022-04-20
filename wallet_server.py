@@ -1,6 +1,7 @@
 from flask import Flask
 from flask import jsonify
 from flask import render_template
+from flask import request
 
 import wallet
 
@@ -20,6 +21,37 @@ def create_wallet():
 
     }
     return jsonify(response), 200
+
+@app.route('/transaction', method=['POST'])
+def create_transaction():
+    request_json = request.json
+    required = (
+        'sender_private_key',
+        'sender_blockchain_address',
+        'recipient_blockchain_address',
+        'value',
+        'sender_public_key',
+        'signature'
+    )
+    if not all(k in request_json for k in required):
+        return jsonify({'message': 'missing values'}), 400
+
+    sender_private_key = request_json['sender_private_key']
+    sender_blockchain_address = request_json['sender_blockchain_address']
+    recipient_blockchain_address = request_json['recipient_blockchain_address']
+    value = request_json['value']
+    sender_public_key = request_json['sender_public_key']
+    signature = request_json['signature']
+
+    transaction = wallet.Transaction(
+        sender_private_key,
+        sender_blockchain_address,
+        recipient_blockchain_address,
+        value,
+        sender_public_key,
+        signature
+    )
+
 
 if __name__ == '__main__':
     from argparse import ArgumentParser
