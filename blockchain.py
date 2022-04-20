@@ -41,9 +41,19 @@ class BlockChain(object):
     def hash(self, block):
         sorted_block = json.dumps(block, sort_keys=True)
         return hashlib.sha256(sorted_block.encode()).hexdigest()
+    
+    def create_transaction(self, sender_blockchain_address, recipient_blockchain_address, value,
+                        sender_public_key=None, signature=None):
+        
+        is_transacted = self.add_transaction(
+            sender_blockchain_address,recipient_blockchain_address, value,
+            sender_public_key, signature
+        )
+        
+        return is_transacted
+        
 
-    def add_transaction(self, sender_blockchain_address,
-                        recipient_blockchain_address, value,
+    def add_transaction(self, sender_blockchain_address, recipient_blockchain_address, value,
                         sender_public_key=None, signature=None):
         transaction = utils.sorted_by_key({
             'sender_blockchain_address': sender_blockchain_address,
@@ -57,11 +67,6 @@ class BlockChain(object):
 
         if self.verify_transaction_signature(
                 sender_public_key, signature, transaction):
-
-            # if self.calculate_total_amount(sender_blockchain_address) < float(value):
-            #     logger.error({'action': 'add_transaction', 'error': 'no_value'})
-            #     return False
-
             self.transaction_pool.append(transaction)
             return True
         return False
